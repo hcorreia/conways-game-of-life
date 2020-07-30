@@ -6,8 +6,11 @@ import time
 # LIVE = '*'
 # DEAD = '.'
 
-LIVE = '\u2588'  # \u2588 OR \u2588
-DEAD = '\u2591'
+LIVE = 1
+DEAD = 0
+
+LIVE_CHAR = '\u2588\u2588'  # \u2588 OR \u2588
+DEAD_CHAR = '\u2591\u2591'
 
 
 def init_state_empty(width, height):
@@ -18,104 +21,28 @@ def init_state_random(width, height):
     return [[random.choice((LIVE, DEAD)) for i in range(width)] for j in range(height)]
 
 
-def init_state_blinker():
-    return [
-        ['.', '.', '.', '.', '.'],
-        ['.', '.', '*', '.', '.'],
-        ['.', '.', '*', '.', '.'],
-        ['.', '.', '*', '.', '.'],
-        ['.', '.', '.', '.', '.'],
-    ]
+def load_state_from_file(name):
+    live = '*'
+    dead = '.'
+    state = []
 
-def init_state_toad():
-    return [
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '*', '*', '*', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '*', '*', '*', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-    ]
+    with open('state_{}.txt'.format(name), 'r') as fd:
+        for line in fd.readlines():
+            state.append([LIVE if c == live else DEAD for c in line])
 
-def init_state_beacon():
-    return [
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '*', '*', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '*', '*', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '*', '*', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '*', '*', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-    ]
+    return state
 
 
-def init_state_penta_decathlon():
-    return [
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '*', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '*', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '*', '*', '*', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '*', '*', '*', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '*', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '*', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '*', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '*', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '*', '*', '*', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '*', '*', '*', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '*', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '*', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-    ]
+def init_state(name=None):
+    if name:
+        return load_state_from_file(name)
+    return init_state_random
 
 
-def init_state_glider():
-    return [
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '*', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '*', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '*', '*', '*', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
-    ]
-
-
-def init_state():
-    # return init_state_blinker()
-    # return init_state_toad()
-    # return init_state_beacon()
-    # return init_state_penta_decathlon()
-    return init_state_glider()
+def is_cell_alive(state, x, y, width, height):
+    if x >= 0 and x < width and y >= 0 and y < height:
+        return state[y][x] == LIVE
+    return False
 
 
 def gen_next(state):
@@ -123,83 +50,73 @@ def gen_next(state):
     height = len(state)
     next_state = init_state_empty(width, height)
 
-    for x in range(height):
-        for y in range(width):
+    for y in range(height):
+        for x in range(width):
             neighbors = 0
 
-            # TODO: fix index wraping like x=-1
-            try:
-                if state[x-1][y+1] == LIVE: neighbors += 1
-            except IndexError:
-                pass
-            try:
-                if state[x-1][y  ] == LIVE: neighbors += 1
-            except IndexError:
-                pass
-            try:
-                if state[x-1][y-1] == LIVE: neighbors += 1
-            except IndexError:
-                pass
-            try:
-                if state[x  ][y-1] == LIVE: neighbors += 1
-            except IndexError:
-                pass
-            try:
-                if state[x+1][y-1] == LIVE: neighbors += 1
-            except IndexError:
-                pass
-            try:
-                if state[x+1][y  ] == LIVE: neighbors += 1
-            except IndexError:
-                pass
-            try:
-                if state[x+1][y+1] == LIVE: neighbors += 1
-            except IndexError:
-                pass
-            try:
-                if state[x  ][y+1] == LIVE: neighbors += 1
-            except IndexError:
-                pass
+            if is_cell_alive(state, x-1, y-1, width, height): neighbors += 1
+            if is_cell_alive(state, x  , y-1, width, height): neighbors += 1
+            if is_cell_alive(state, x+1, y-1, width, height): neighbors += 1
+            if is_cell_alive(state, x+1, y  , width, height): neighbors += 1
+            if is_cell_alive(state, x+1, y+1, width, height): neighbors += 1
+            if is_cell_alive(state, x  , y+1, width, height): neighbors += 1
+            if is_cell_alive(state, x-1, y+1, width, height): neighbors += 1
+            if is_cell_alive(state, x-1, y  , width, height): neighbors += 1
 
-            if state[x][y] == LIVE:
+            # Could be refactored changing init random from None to DEAD
+            if state[y][x] == LIVE:
                 if neighbors <= 1:
-                    next_state[x][y] = DEAD
+                    next_state[y][x] = DEAD
                 elif neighbors >= 4:
-                    next_state[x][y] = DEAD
+                    next_state[y][x] = DEAD
                 else:
-                    next_state[x][y] = LIVE
+                    next_state[y][x] = LIVE
             else:
                 if neighbors == 3:
-                    next_state[x][y] = LIVE
+                    next_state[y][x] = LIVE
                 else:
-                    next_state[x][y] = DEAD
+                    next_state[y][x] = DEAD
 
             # print('')
-            # print('state[{}][{}] = {} :: {}'.format(x, y, state[x][y], neighbors))
-            # print('next_[{}][{}] = {}'.format(x, y, next_state[x][y]))
-            # print(next_state[x][y])
+            # print('state[{}][{}] = {} :: {}'.format(x, y, state[y][x], neighbors))
+            # print('next_[{}][{}] = {}'.format(x, y, next_state[y][x]))
+            # print(next_state[y][x])
 
     # print(next_state)
     return next_state
 
 
+last_screen = None
+
+
 def draw(state):
+    global last_screen
+
+    # LOL
+    txt = '\n'.join([''.join(LIVE_CHAR if c == LIVE else DEAD_CHAR for c in l) for l in state])
+
+    if txt == last_screen:
+        quit()
+
+    last_screen = txt
+
     print('')
     print('')
     print('')
     print('')
-    print('\n'.join([''.join(l) for l in state]))
-    return
-    print('')
-    print('\n'.join([str(l) for l in state]))
+    print(txt)
+
 
 
 def life(limit, wait=1):
-    # state = init_state()
-    state = init_state_random(160, 38)
+    # state = load_state_from_file('toad')
+    # state = load_state_from_file('beacon')
+    state = load_state_from_file('penta_decathlon')
+    # state = load_state_from_file('glider')
+    # state = init_state_random(80, 38)
+
     draw(state)
-    # draw(init_state_empty())
-    # quit()
+
     for _ in range(limit):
         time.sleep(wait)
         state = gen_next(state)
@@ -207,4 +124,6 @@ def life(limit, wait=1):
 
 
 if __name__ == '__main__':
-    life(100000, wait=0.120)
+    # life(100000, wait=0.06)
+    # life(100000, wait=0.120)
+    life(100000, wait=0.6)
