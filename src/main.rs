@@ -3,8 +3,8 @@ use std::time;
 use rand::random;
 
 
-const LIVE: bool = true;
-const DEAD: bool = false;
+const LIVE: u8 = 1;
+const DEAD: u8 = 0;
 
 const LIVE_CHAR: &str = "\u{2588}\u{2588}";  // \u2588 OR \u2588
 const DEAD_CHAR: &str = "\u{2591}\u{2591}";
@@ -13,7 +13,7 @@ const DEAD_CHAR: &str = "\u{2591}\u{2591}";
 pub struct BoardState {
     width: i32,
     height: i32,
-    cells: Vec<Vec<bool>>,
+    cells: Vec<Vec<u8>>,
 }
 
 impl BoardState {
@@ -27,35 +27,30 @@ impl BoardState {
         // return ref_state;
     }
 
-    fn get_index(&self, x: i32, y: i32) -> bool {
-        if x >= 0 && x < self.width && y >= 0 && y < self.height {
+    fn get_index(&self, x: i32, y: i32) -> u8 {
+        if x >= 0 && y >= 0 && x < self.width && y < self.height {
+            // println!("deltas {:?}", (x, y));
             return self.cells[y as usize][x as usize];
         }
         return DEAD;
     }
 
-    fn get_neighbors(&self, x: i32, y: i32) -> i32 {
-        let mut neighbors = 0;
-
-        for dy in [-1, 0, 1].iter().cloned() {
-            for dx in [-1, 0, 1].iter().cloned() {
-                // println!("deltas {:?}", (dx, dy));
-                if dx == 0 && dy == 0 {
-                    continue;
-                }
-                // println!("TEST {:?}", (x+dx, y+dy));
-                if self.get_index(x+dx, y+dy) == LIVE {
-                    neighbors += 1;
-                }
-            }
-        }
-
-        return neighbors;
+    fn get_neighbors(&self, x: i32, y: i32) -> u8 {
+        return
+            self.get_index(x-1, y-1) +
+            self.get_index(x  , y-1) +
+            self.get_index(x+1, y-1) +
+            self.get_index(x+1, y  ) +
+            self.get_index(x+1, y+1) +
+            self.get_index(x  , y+1) +
+            self.get_index(x-1, y+1) +
+            self.get_index(x-1, y  );
     }
 
     pub fn gen_next(&mut self) {
-        let mut next_state = self.cells.clone();
-        let mut neighbors: i32;
+        // let mut next_state = self.cells.clone();
+        let mut next_state = vec![vec![DEAD; self.width as usize]; self.height as usize];
+        let mut neighbors: u8;
 
         for y in 0..self.height {
             for x in 0..self.width {
@@ -96,7 +91,7 @@ fn init_state_random(width: i32, height: i32) -> BoardState {
 
     for y in 0..state.height {
         for x in 0..state.width {
-            state.cells[y as usize][x as usize] = random();
+            state.cells[y as usize][x as usize] = random::<bool>() as u8;
         }
     }
 
@@ -137,23 +132,31 @@ fn draw(state: &BoardState) {
 }
 
 fn life(width: i32, height: i32, limit: i64, wait: u64, debug: bool) {
+    let sleep_time = time::Duration::from_millis(wait);
+    let mut now;
+    let mut state;
     // let mut state = init_state_empty(width, height);
-    let mut state = init_state_random(width, height);
+    // let mut state = init_state_random(width, height);
     // let mut state = init_state_glider(width, height);
 
     if debug {
-        println!("Tick 1 !");
+        now = time::SystemTime::now();
+        state = init_state_random(width, height);
+        println!("Tick 1 ! {:?}", now.elapsed());
     } else {
+        state = init_state_random(width, height);
         draw(&state);
     }
 
     for _ in 0..limit {
-        thread::sleep(time::Duration::from_millis(wait));
-        state.gen_next();
+        thread::sleep(sleep_time);
 
         if debug {
-            println!("Tick !");
+            now = time::SystemTime::now();
+            state.gen_next();
+            println!("Tick ! {:?}", now.elapsed());
         } else {
+            state.gen_next();
             draw(&state);
         }
     }
@@ -162,12 +165,12 @@ fn life(width: i32, height: i32, limit: i64, wait: u64, debug: bool) {
 fn main() {
     life(
         // width, height
-        80, 38,
-        // 1_000, 1_000,
+        // 80, 38,
+        2_000, 2_000,
         // max iter
-        100_000,
+        10,
         // sleep ms
         60,
         // debug, show time per tick insted of board
-        false);
+        true);
 }
