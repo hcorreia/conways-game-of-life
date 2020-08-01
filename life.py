@@ -111,19 +111,22 @@ def draw(state):
 def life(limit, wait=1):
     # state = load_state_from_file('toad')
     # state = load_state_from_file('beacon')
-    state = load_state_from_file('penta_decathlon')
+    # state = load_state_from_file('penta_decathlon')
     # state = load_state_from_file('glider')
     # state = init_state_random(80, 38)
+    state = init_state_random(1_000, 1_000)
 
-    draw(state)
+    # draw(state)
+    print('Tick 1 !')
 
     for _ in range(limit):
         time.sleep(wait)
         state = gen_next(state)
-        draw(state)
+        # draw(state)
+        print('Tick !')
 
 
 if __name__ == '__main__':
-    # life(100000, wait=0.06)
-    # life(100000, wait=0.120)
-    life(100000, wait=0.6)
+    # life(100_000, wait=0.06)
+    life(100_000, wait=0.120)
+    # life(100_000, wait=0.6)

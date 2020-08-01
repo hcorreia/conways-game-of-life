@@ -1,115 +1,131 @@
 use std::thread;
 use std::time;
+use rand::random;
 
-const LIVE: i32 = 1;
-const DEAD: i32 = 0;
+
+const LIVE: bool = true;
+const DEAD: bool = false;
 
 const LIVE_CHAR: &str = "\u{2588}\u{2588}";  // \u2588 OR \u2588
 const DEAD_CHAR: &str = "\u{2591}\u{2591}";
 
 
 pub struct BoardState {
-    width: u32,
-    height: u32,
-    cells: Vec<Vec<i32>>,
+    width: i32,
+    height: i32,
+    cells: Vec<Vec<bool>>,
+}
+
+impl BoardState {
+    pub fn new(width: i32, height: i32) -> BoardState {
+        let cells = vec![vec![DEAD; width as usize]; height as usize];
+
+        return BoardState {width, height, cells};
+        // let state = BoardState {width, height, cells};
+
+
+        // return ref_state;
+    }
+
+    fn get_index(&self, x: i32, y: i32) -> bool {
+        if x >= 0 && x < self.width && y >= 0 && y < self.height {
+            return self.cells[y as usize][x as usize];
+        }
+        return DEAD;
+    }
+
+    fn get_neighbors(&self, x: i32, y: i32) -> i32 {
+        let mut neighbors = 0;
+
+        for dy in [-1, 0, 1].iter().cloned() {
+            for dx in [-1, 0, 1].iter().cloned() {
+                // println!("deltas {:?}", (dx, dy));
+                if dx == 0 && dy == 0 {
+                    continue;
+                }
+                // println!("TEST {:?}", (x+dx, y+dy));
+                if self.get_index(x+dx, y+dy) == LIVE {
+                    neighbors += 1;
+                }
+            }
+        }
+
+        return neighbors;
+    }
+
+    pub fn gen_next(&mut self) {
+        let mut next_state = self.cells.clone();
+        let mut neighbors: i32;
+
+        for y in 0..self.height {
+            for x in 0..self.width {
+                neighbors = self.get_neighbors(x, y);
+
+                if self.cells[y as usize][x as usize] == LIVE {
+                    if neighbors <= 1 {
+                        next_state[y as usize][x as usize] = DEAD;
+                    } else if neighbors >= 4 {
+                        next_state[y as usize][x as usize] = DEAD;
+                    } else {
+                        next_state[y as usize][x as usize] = LIVE;
+                    }
+                } else {
+                    if neighbors == 3 {
+                        next_state[y as usize][x as usize] = LIVE;
+                    } else {
+                        next_state[y as usize][x as usize] = DEAD;
+                    }
+                }
+            }
+        }
+
+        self.cells = next_state;
+    }
 }
 
 
-fn init_state_empty() -> Vec<Vec<i32>> {
-    let width = 15;
-    let height = 10;
-    let state = vec![vec![0; width]; height];
+fn init_state_empty(width: i32, height: i32) -> BoardState {
+    let state = BoardState::new(width, height);
+    // let ref_state: &BoardState = &state;
 
     return state;
 }
 
-fn init_state_random() -> Vec<Vec<i32>> {
-    let mut state = init_state_empty();
+fn init_state_random(width: i32, height: i32) -> BoardState {
+    let mut state = BoardState::new(width, height);
 
-    state[2][0] = 1;
-    state[2][1] = 1;
-    state[2][2] = 1;
-    state[1][2] = 1;
-    state[0][1] = 1;
+    for y in 0..state.height {
+        for x in 0..state.width {
+            state.cells[y as usize][x as usize] = random();
+        }
+    }
 
     return state;
 }
 
-// fn is_cell_alive(state: Vec<Vec<i32>>, x: usize, y: usize, width: usize, height: usize) -> bool {
-//     // println!("{:?}", (x, y));
-//     if x >= 0 && x < width && y >= 0 && y < height {
-//         return state[y][x] == LIVE;
-//     }
-//     return false;
-// }
+fn init_state_glider(width: i32, height: i32) -> BoardState {
+    let mut state = init_state_empty(width, height);
 
-fn get_index(state: Vec<Vec<i32>>, x: i32, y: i32, width: i32, height: i32) -> i32 {
-    if x >= 0 && x < width && y >= 0 && y < height {
-        return state[y as usize][x as usize];
-    }
-    return DEAD;
-}
-fn get_neighbors(state: Vec<Vec<i32>>, x: i32, y: i32, width: i32, height: i32) -> i32 {
-    let mut neighbors = 0;
+    state.cells[2][0] = LIVE;
+    state.cells[2][1] = LIVE;
+    state.cells[2][2] = LIVE;
+    state.cells[1][2] = LIVE;
+    state.cells[0][1] = LIVE;
 
-    for dy in [-1, 0, 1].iter().cloned() {
-        for dx in [-1, 0, 1].iter().cloned() {
-            // println!("deltas {:?}", (dx, dy));
-            if dx == 0 && dy == 0 {
-                continue;
-            }
-            // println!("TEST {:?}", (x+dx, y+dy));
-            if get_index(state.clone(), x+dx, y+dy, width, height) == LIVE {
-                neighbors += 1;
-            }
-        }
-    }
-
-    return neighbors;
+    return state;
 }
 
-fn gen_next(state: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
-    let width = 15;
-    let height = 10;
-    let mut next_state = init_state_empty();
-    let mut neighbors: i32;
-
-    for y in 0..height {
-        for x in 0..width {
-            neighbors = get_neighbors(state.clone(), x, y, width, height);
-
-            if state[y as usize][x as usize] == LIVE {
-                if neighbors <= 1 {
-                    next_state[y as usize][x as usize] = DEAD;
-                } else if neighbors >= 4 {
-                    next_state[y as usize][x as usize] = DEAD;
-                } else {
-                    next_state[y as usize][x as usize] = LIVE;
-                }
-            } else {
-                if neighbors == 3 {
-                    next_state[y as usize][x as usize] = LIVE;
-                } else {
-                    next_state[y as usize][x as usize] = DEAD;
-                }
-            }
-        }
-    }
-
-    return next_state;
-}
-
-fn draw(state: Vec<Vec<i32>>) {
+fn draw(state: &BoardState) {
     println!("");
     println!("");
     println!("");
     println!("");
 
-    for row in state {
+    for row in &state.cells {
         let mut line = String::from("");
 
         for cel in row {
-            if cel == LIVE {
+            if *cel == LIVE {
                 line.push_str(LIVE_CHAR);
             } else {
                 line.push_str(DEAD_CHAR);
@@ -120,28 +136,38 @@ fn draw(state: Vec<Vec<i32>>) {
     }
 }
 
-fn life(limit: i64, wait: u64) {
-    let mut state = init_state_random();
+fn life(width: i32, height: i32, limit: i64, wait: u64, debug: bool) {
+    // let mut state = init_state_empty(width, height);
+    let mut state = init_state_random(width, height);
+    // let mut state = init_state_glider(width, height);
 
-    draw(state.clone());
-    // draw(state.clone());
+    if debug {
+        println!("Tick 1 !");
+    } else {
+        draw(&state);
+    }
+
     for _ in 0..limit {
         thread::sleep(time::Duration::from_millis(wait));
-        state = gen_next(state.clone());
-        draw(state.clone());
+        state.gen_next();
+
+        if debug {
+            println!("Tick !");
+        } else {
+            draw(&state);
+        }
     }
-    // draw(state);
 }
 
 fn main() {
-    life(100, 120);
-
-    // let a: usize = 0;
-    // let b: u64 = a-1;
-
-    // for x in 0..10 {
-    //     println!("{:?}", x-1);
-    // }
-
-    // println!("{:?}", (a, b));
+    life(
+        // width, height
+        80, 38,
+        // 1_000, 1_000,
+        // max iter
+        100_000,
+        // sleep ms
+        60,
+        // debug, show time per tick insted of board
+        false);
 }
