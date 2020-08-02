@@ -126,7 +126,86 @@ def life(limit, wait=1):
         print('Tick !')
 
 
+def native_rust(width, height, limit, wait, debug=False):
+    import ctypes
+    from ctypes import cdll
+
+    lib = cdll.LoadLibrary("target/debug/liblife.so")
+
+    lib.init_state_random_2.argtypes = (ctypes.c_int32, ctypes.c_int32)
+    lib.init_state_random_2.restype = ctypes.c_void_p
+
+    # next_state
+    lib.next_state.argtypes = (ctypes.c_void_p,)
+    lib.next_state.restype = ctypes.c_void_p
+    # free_char_p
+    lib.free_char_p.argtypes = (ctypes.c_void_p,)
+    # free_void_p
+    lib.free_void_p.argtypes = (ctypes.c_void_p,)
+
+    state = None
+    txt_ptr = None
+
+    try:
+        state_ptr = lib.init_state_random_2(width, height)
+
+        # TODO: print init state
+
+        for i in range(limit):
+            time.sleep(wait)
+
+            print('py:', '{:x}'.format(state_ptr), type(state_ptr))
+            print('py ctype:', state_ptr, ctypes.c_void_p(state_ptr), ctypes.c_void_p(state_ptr).value)
+            print('py2:', '{:x}'.format(state_ptr), type(state_ptr))
+            txt_ptr = lib.next_state(state_ptr)
+            txt = ctypes.cast(txt_ptr, ctypes.c_char_p).value.decode('utf-8')
+            print('py: txt', '{:x}'.format(txt_ptr), type(txt_ptr))
+            lib.free_char_p(txt_ptr)
+            txt_ptr = None
+            # try:
+            # except Exception:
+            #     txt = 'ERROR'
+            print(txt)
+            # finally:
+            #     lib.theme_song_free(ptr)
+
+        lib.free_void_p(state_ptr)
+        state_ptr = None
+        print("done python ctypes!")
+
+    except KeyboardInterrupt:
+        # raise
+        pass
+    finally:
+        lib.free_char_p(txt_ptr)
+        lib.free_void_p(state_ptr)
+        quit()
+
+
+    # from cffi import FFI
+
+
+    # ffi = FFI()
+    # lib = ffi.dlopen("target/debug/liblife.so")
+
+    # ffi.cdef('void *init_state_random_2(int, int);')
+    # ffi.cdef('void next_state(void *state_ptr);')
+
+    # state = lib.init_state_random_2(10, 5)
+    # # print('py:', '{:x}'.format(state), type(state))
+    # for i in range(10):
+    #     print('py:', lib.next_state(state))
+
+    # print("done python cffi!")
+
+
 if __name__ == '__main__':
     # life(100_000, wait=0.06)
-    life(100_000, wait=0.120)
+    # life(100_000, wait=0.120)
     # life(100_000, wait=0.6)
+
+    native_rust(
+        width=80, height=30,
+        limit=10_000,
+        wait=0.120,
+        debug=True)
