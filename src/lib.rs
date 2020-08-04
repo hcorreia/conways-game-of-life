@@ -1,9 +1,10 @@
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
 use rand::random;
 use libc;
 use std::ffi::CString;
-use std::ffi::c_void;
+// use std::ffi::c_void;
 
 
 const LIVE: u8 = 1;
@@ -14,6 +15,7 @@ const DEAD_CHAR: &str = "\u{2591}\u{2591}";
 
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct BoardState {
     width: i32,
     height: i32,
@@ -23,6 +25,28 @@ pub struct BoardState {
 impl BoardState {
     pub fn new(width: i32, height: i32) -> BoardState {
         let cells = vec![DEAD; (width*height) as usize];
+
+        return BoardState {width, height, cells};
+    }
+
+    pub fn new_random(width: i32, height: i32) -> BoardState {
+        let mut cells = vec![DEAD; (width*height) as usize];
+
+        for i in 0..(height*width) {
+            cells[i as usize] = random::<bool>() as u8;
+        }
+
+        return BoardState {width, height, cells};
+    }
+
+    pub fn new_glider(width: i32, height: i32) -> BoardState {
+        let mut cells = vec![DEAD; (width*height) as usize];
+
+        cells[(2*width + 0) as usize] = LIVE;
+        cells[(2*width + 1) as usize] = LIVE;
+        cells[(2*width + 2) as usize] = LIVE;
+        cells[(1*width + 2) as usize] = LIVE;
+        cells[(0*width + 1) as usize] = LIVE;
 
         return BoardState {width, height, cells};
     }
@@ -46,71 +70,136 @@ impl BoardState {
             self.get_index(x-1, y+1) +
             self.get_index(x-1, y  );
     }
+}
 
-    pub fn gen_next(&mut self) {
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct Life {
+    state: Arc<BoardState>,
+}
+
+impl Life {
+    pub fn new(width: i32, height: i32) -> Life {
+        let state = Arc::new(BoardState::new(width, height));
+        return Life {state};
+    }
+
+    pub fn new_random(width: i32, height: i32) -> Life {
+        let state = Arc::new(BoardState::new_random(width, height));
+        return Life {state};
+    }
+
+    pub fn new_glider(width: i32, height: i32) -> Life {
+        let state = Arc::new(BoardState::new_glider(width, height));
+        return Life {state};
+    }
+
+    pub fn tick(&mut self) {
         // let mut next_state = self.cells.clone();
-        let mut next_state = vec![DEAD; (self.width*self.height) as usize];
-        let mut neighbors: u8;
-        let mut x;
-        let mut y;
+        let next_cells = vec![DEAD; (self.state.width*self.state.height) as usize];
+        // let next_state = BoardState::new(self.state.width, self.state.height);
+        // let mut neighbors: u8;
+        // let mut x;
+        // let mut y;
 
-        for i in 0..(self.height*self.width) {
-            x = i % self.width;
-            y = i / self.width;
+        let mut workers = Vec::new();
 
-            neighbors = self.get_neighbors(x, y);
+        // let state = Arc::clone(&self.state);
+        let c_lock = Arc::new(Mutex::new(next_cells));
 
-            if self.cells[i as usize] == LIVE {
-                if neighbors <= 1 {
-                    next_state[i as usize] = DEAD;
-                } else if neighbors >= 4 {
-                    next_state[i as usize] = DEAD;
-                } else {
-                    next_state[i as usize] = LIVE;
+        // let width = self.state.width;
+        // let height = self.state.height;
+
+        // let state_arc = Arc::new(Mutex::new(&self));
+        let cpus: usize = 2;
+        let slice_size = ((self.state.width*self.state.height) as usize)/cpus;
+        // let slices = next_cells.slice_at(slice_size);
+
+        for n in 0..cpus {
+            let state = Arc::clone(&self.state);
+            let c_lock2 = c_lock.clone();
+
+            // let &mut cells_slice = next_cells[(slice_size*n)..(slice_size*n+slice_size-1)];
+            // let cells_slice = Arc::new(cells_slice);
+            // println!("{:?}", (slice_size*n, slice_size*n+slice_size-1));
+
+            let from = (slice_size*n) as i32;
+            let to = (slice_size*n+slice_size) as i32;
+
+            // println!("{:?}", (from, to));
+
+            workers.push(thread::spawn(move || {
+                // println!("{:?}", (width, height));
+                // println!("{:?}", state);
+                for i in from..to {
+
+                    let x = i % state.width;
+                    let y = i / state.width;
+
+                    let neighbors = state.get_neighbors(x, y);
+
+                    if state.cells[i as usize] == LIVE {
+                        if neighbors <= 1 {
+                            // c_lock2.lock().unwrap()[i as usize] = DEAD;
+                        } else if neighbors >= 4 {
+                            // c_lock2.lock().unwrap()[i as usize] = DEAD;
+                        } else {
+                            c_lock2.lock().unwrap()[i as usize] = LIVE;
+                        }
+                    } else {
+                        if neighbors == 3 {
+                            c_lock2.lock().unwrap()[i as usize] = LIVE;
+                        } else {
+                            // c_lock2.lock().unwrap()[i as usize] = DEAD;
+                        }
+                    }
                 }
-            } else {
-                if neighbors == 3 {
-                    next_state[i as usize] = LIVE;
-                } else {
-                    next_state[i as usize] = DEAD;
-                }
-            }
+
+                // println!("DONE worker{:?}", n);
+            }));
         }
 
-        self.cells = next_state;
+
+        for worker in workers {
+            let _ = worker.join();
+        }
+
+        // for worker in &mut self.workers {
+        //     // let _ = worker.join();
+
+        //     if let Some(thread) = worker.take() {
+        //         thread.join().unwrap();
+        //     }
+        // }
+
+let cells = c_lock.lock().unwrap();
+let width = self.state.width;
+let height = self.state.height;
+let next_state = BoardState{width, height, cells: cells.to_vec()};
+// println!("{:?}", next_state.width);
+
+        // self.state = Arc::new(next_state);
+        // let next_state = c_lock.lock().unwrap();
+        self.state = Arc::new(next_state);
+
+        // return next_state;
     }
 }
 
 
-fn init_state_empty(width: i32, height: i32) -> BoardState {
-    let state = BoardState::new(width, height);
-    // let ref_state: &BoardState = &state;
-
-    return state;
+fn init_state_empty(width: i32, height: i32) -> Life {
+    return Life::new(width, height);
 }
 
 
-fn init_state_random(width: i32, height: i32) -> BoardState {
-    let mut state = BoardState::new(width, height);
-
-    for i in 0..(state.height*state.width) {
-        state.cells[i as usize] = random::<bool>() as u8;
-    }
-
-    return state;
+fn init_state_random(width: i32, height: i32) -> Life {
+    return Life::new_random(width, height);
 }
 
 
-fn init_state_glider(width: i32, height: i32) -> BoardState {
-    let mut state = init_state_empty(width, height);
-
-    state.cells[(2*width + 0) as usize] = LIVE;
-    state.cells[(2*width + 1) as usize] = LIVE;
-    state.cells[(2*width + 2) as usize] = LIVE;
-    state.cells[(1*width + 2) as usize] = LIVE;
-    state.cells[(0*width + 1) as usize] = LIVE;
-
-    return state;
+fn init_state_glider(width: i32, height: i32) -> Life {
+    return Life::new_glider(width, height);
 }
 
 
@@ -141,20 +230,19 @@ fn draw(state: &BoardState) {
 pub fn life(width: i32, height: i32, limit: i64, wait: u64, debug: bool) {
     let sleep_time = time::Duration::from_millis(wait);
     let mut now;
-    let mut state;
-    // let mut state = init_state_empty(width, height);
-    // let mut state = init_state_random(width, height);
-    // let mut state = init_state_glider(width, height);
+    let mut game;
 
     if debug {
         now = time::SystemTime::now();
-        state = init_state_random(width, height);
-        // state = init_state_glider(width, height);
+        // game = init_state_empty(width, height);
+        game = init_state_random(width, height);
+        // game = init_state_glider(width, height);
         println!("Tick 1 ! {:?}", now.elapsed());
     } else {
-        state = init_state_random(width, height);
-        // state = init_state_glider(width, height);
-        draw(&state);
+        // game = init_state_empty(width, height);
+        game = init_state_random(width, height);
+        // game = init_state_glider(width, height);
+        draw(&game.state);
     }
 
     for _ in 0..limit {
@@ -162,44 +250,44 @@ pub fn life(width: i32, height: i32, limit: i64, wait: u64, debug: bool) {
 
         if debug {
             now = time::SystemTime::now();
-            state.gen_next();
+            game.tick();
             println!("Tick ! {:?}", now.elapsed());
         } else {
-            state.gen_next();
-            draw(&state);
+            game.tick();
+            draw(&game.state);
         }
     }
 }
 
 
 #[no_mangle] // *mut libc::c_void
-pub extern "C" fn init_state_random_2(width: i32, height: i32) -> *mut BoardState {
+pub extern "C" fn init_state_random_2(width: i32, height: i32) -> *mut Life {
     println!("{:?}, {:?}", width, height);
-    let mut state = BoardState::new(width, height);
-    println!("{:?}, {:?}", state.width, state.height);
-    for i in 0..(state.height*state.width) {
-        state.cells[i as usize] = random::<bool>() as u8;
-    }
+    let game = Life::new_random(width, height);
+    println!("{:?}, {:?}", game.state.width, game.state.height);
+    // for i in 0..(game.height*game.width) {
+    //     game.cells[i as usize] = random::<bool>() as u8;
+    // }
 
-    let raw = Box::into_raw(Box::new(state));
+    let raw = Box::into_raw(Box::new(game));
     println!("return ptr {:?}", raw);
     return raw;
-    // return Box::into_raw(Box::new(state)) as *mut libc::c_void;
+    // return Box::into_raw(Box::new(game)) as *mut libc::c_void;
 }
 
 
 #[no_mangle]
-pub extern "C" fn next_state(state_ptr: *mut libc::c_void) -> *mut libc::c_char {
-    println!("next_state ptr {:?}", state_ptr);
-    // let state: &mut BoardState = unsafe { &mut *(state_ptr as *mut BoardState) };
-    // let mut state = unsafe { Box::from_raw(state_ptr as *mut BoardState) };
-    let mut state = unsafe { Box::from_raw(state_ptr as *mut BoardState) };
+pub extern "C" fn next_state(game_ptr: *mut libc::c_void) -> *mut libc::c_char {
+    println!("next_state ptr {:?}", game_ptr);
+    // let game: &mut Life = unsafe { &mut *(game_ptr as *mut Life) };
+    // let mut game = unsafe { Box::from_raw(game_ptr as *mut Life) };
+    let mut game = unsafe { Box::from_raw(game_ptr as *mut Life) };
 
     let mut buff = String::from("");
-    println!("{:?}", (state.width, state.height));
-    state.gen_next();
+    println!("{:?}", (game.state.width, game.state.height));
+    game.tick();
 
-    for (i, cell) in state.cells.iter().enumerate() {
+    for (i, cell) in game.state.cells.iter().enumerate() {
 
         if *cell == LIVE {
             buff.push_str(LIVE_CHAR);
@@ -207,17 +295,18 @@ pub extern "C" fn next_state(state_ptr: *mut libc::c_void) -> *mut libc::c_char 
             buff.push_str(DEAD_CHAR);
         }
 
-        if  (i as i32  + 1) % state.width == 0 {
+        if  (i as i32  + 1) % game.state.width == 0 {
             buff.push_str("\n");
         }
     }
 
-    let raw = Box::into_raw(Box::new(state));
+    let raw = Box::into_raw(Box::new(game));
     println!("return ptr {:?}", raw);
 
     let c_str_song = CString::new(buff).unwrap();
     return c_str_song.into_raw();
 }
+
 
 #[no_mangle]
 pub extern "C" fn free_char_p(s: *mut libc::c_char) {
