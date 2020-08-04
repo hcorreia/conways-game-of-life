@@ -1,3 +1,4 @@
+use threadpool::ThreadPool;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
@@ -77,22 +78,26 @@ impl BoardState {
 #[derive(Debug)]
 pub struct Life {
     state: Arc<BoardState>,
+    pool: ThreadPool,
 }
 
 impl Life {
-    pub fn new(width: i32, height: i32) -> Life {
+    pub fn new(width: i32, height: i32, n_workers: usize) -> Life {
         let state = Arc::new(BoardState::new(width, height));
-        return Life {state};
+        let pool = ThreadPool::new(n_workers);
+        return Life {state, pool};
     }
 
-    pub fn new_random(width: i32, height: i32) -> Life {
+    pub fn new_random(width: i32, height: i32, n_workers: usize) -> Life {
         let state = Arc::new(BoardState::new_random(width, height));
-        return Life {state};
+        let pool = ThreadPool::new(n_workers);
+        return Life {state, pool};
     }
 
-    pub fn new_glider(width: i32, height: i32) -> Life {
+    pub fn new_glider(width: i32, height: i32, n_workers: usize) -> Life {
         let state = Arc::new(BoardState::new_glider(width, height));
-        return Life {state};
+        let pool = ThreadPool::new(n_workers);
+        return Life {state, pool};
     }
 
     pub fn tick(&mut self) {
@@ -103,7 +108,7 @@ impl Life {
         // let mut x;
         // let mut y;
 
-        let mut workers = Vec::new();
+        // let mut workers = Vec::new();
 
         // let state = Arc::clone(&self.state);
         let c_lock = Arc::new(Mutex::new(next_cells));
@@ -112,7 +117,7 @@ impl Life {
         // let height = self.state.height;
 
         // let state_arc = Arc::new(Mutex::new(&self));
-        let cpus: usize = 2;
+        let cpus: usize = 2;  // pool.max_count()
         let slice_size = ((self.state.width*self.state.height) as usize)/cpus;
         // let slices = next_cells.slice_at(slice_size);
 
@@ -120,16 +125,13 @@ impl Life {
             let state = Arc::clone(&self.state);
             let c_lock2 = c_lock.clone();
 
-            // let &mut cells_slice = next_cells[(slice_size*n)..(slice_size*n+slice_size-1)];
-            // let cells_slice = Arc::new(cells_slice);
-            // println!("{:?}", (slice_size*n, slice_size*n+slice_size-1));
-
+            // TODO: fix
             let from = (slice_size*n) as i32;
             let to = (slice_size*n+slice_size) as i32;
 
             // println!("{:?}", (from, to));
 
-            workers.push(thread::spawn(move || {
+            self.pool.execute(move || {
                 // println!("{:?}", (width, height));
                 // println!("{:?}", state);
                 for i in from..to {
@@ -157,49 +159,34 @@ impl Life {
                 }
 
                 // println!("DONE worker{:?}", n);
-            }));
+            });
         }
 
 
-        for worker in workers {
-            let _ = worker.join();
-        }
+        self.pool.join();
 
-        // for worker in &mut self.workers {
-        //     // let _ = worker.join();
+        let cells = c_lock.lock().unwrap();
+        let width = self.state.width;
+        let height = self.state.height;
+        let next_state = BoardState{width, height, cells: cells.to_vec()};
 
-        //     if let Some(thread) = worker.take() {
-        //         thread.join().unwrap();
-        //     }
-        // }
-
-let cells = c_lock.lock().unwrap();
-let width = self.state.width;
-let height = self.state.height;
-let next_state = BoardState{width, height, cells: cells.to_vec()};
-// println!("{:?}", next_state.width);
-
-        // self.state = Arc::new(next_state);
-        // let next_state = c_lock.lock().unwrap();
         self.state = Arc::new(next_state);
-
-        // return next_state;
     }
 }
 
 
-fn init_state_empty(width: i32, height: i32) -> Life {
-    return Life::new(width, height);
+fn init_state_empty(width: i32, height: i32, n_workers: usize) -> Life {
+    return Life::new(width, height, n_workers);
 }
 
 
-fn init_state_random(width: i32, height: i32) -> Life {
-    return Life::new_random(width, height);
+fn init_state_random(width: i32, height: i32, n_workers: usize) -> Life {
+    return Life::new_random(width, height, n_workers);
 }
 
 
-fn init_state_glider(width: i32, height: i32) -> Life {
-    return Life::new_glider(width, height);
+fn init_state_glider(width: i32, height: i32, n_workers: usize) -> Life {
+    return Life::new_glider(width, height, n_workers);
 }
 
 
@@ -231,17 +218,18 @@ pub fn life(width: i32, height: i32, limit: i64, wait: u64, debug: bool) {
     let sleep_time = time::Duration::from_millis(wait);
     let mut now;
     let mut game;
+    let n_workers = 2;
 
     if debug {
         now = time::SystemTime::now();
-        // game = init_state_empty(width, height);
-        game = init_state_random(width, height);
-        // game = init_state_glider(width, height);
+        // game = init_state_empty(width, height, n_workers);
+        game = init_state_random(width, height, n_workers);
+        // game = init_state_glider(width, height, n_workers);
         println!("Tick 1 ! {:?}", now.elapsed());
     } else {
-        // game = init_state_empty(width, height);
-        game = init_state_random(width, height);
-        // game = init_state_glider(width, height);
+        // game = init_state_empty(width, height, n_workers);
+        game = init_state_random(width, height, n_workers);
+        // game = init_state_glider(width, height, n_workers);
         draw(&game.state);
     }
 
@@ -263,7 +251,7 @@ pub fn life(width: i32, height: i32, limit: i64, wait: u64, debug: bool) {
 #[no_mangle] // *mut libc::c_void
 pub extern "C" fn init_state_random_2(width: i32, height: i32) -> *mut Life {
     println!("{:?}, {:?}", width, height);
-    let game = Life::new_random(width, height);
+    let game = Life::new_random(width, height, 2);
     println!("{:?}, {:?}", game.state.width, game.state.height);
     // for i in 0..(game.height*game.width) {
     //     game.cells[i as usize] = random::<bool>() as u8;

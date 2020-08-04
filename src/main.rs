@@ -8,7 +8,7 @@ fn main() {
         // 5, 10,
         2_000, 2_000,
         // max iter
-        10_000,
+        10,
         // sleep ms
         60,
         // debug, show time per tick insted of board

@@ -16,3 +16,4 @@ crate-type = ["cdylib", "staticlib"]
 [dependencies]
 rand = "0.7"
 libc = "0.2"
+threadpool = "1.0"
