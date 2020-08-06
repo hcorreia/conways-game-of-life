@@ -132,8 +132,8 @@ def native_rust(width, height, limit, wait, debug=False):
 
     lib = cdll.LoadLibrary("target/debug/liblife.so")
 
-    lib.init_state_random_2.argtypes = (ctypes.c_int32, ctypes.c_int32)
-    lib.init_state_random_2.restype = ctypes.c_void_p
+    lib.init_state_random.argtypes = (ctypes.c_int32, ctypes.c_int32, ctypes.c_int32)
+    lib.init_state_random.restype = ctypes.c_void_p
 
     # next_state
     lib.next_state.argtypes = (ctypes.c_void_p,)
@@ -147,19 +147,19 @@ def native_rust(width, height, limit, wait, debug=False):
     txt_ptr = None
 
     try:
-        state_ptr = lib.init_state_random_2(width, height)
+        state_ptr = lib.init_state_random(width, height, 4)
 
         # TODO: print init state
 
         for i in range(limit):
             time.sleep(wait)
 
-            print('py:', '{:x}'.format(state_ptr), type(state_ptr))
-            print('py ctype:', state_ptr, ctypes.c_void_p(state_ptr), ctypes.c_void_p(state_ptr).value)
-            print('py2:', '{:x}'.format(state_ptr), type(state_ptr))
+            # print('py:', '{:x}'.format(state_ptr), type(state_ptr))
+            # print('py ctype:', state_ptr, ctypes.c_void_p(state_ptr), ctypes.c_void_p(state_ptr).value)
+            # print('py2:', '{:x}'.format(state_ptr), type(state_ptr))
             txt_ptr = lib.next_state(state_ptr)
             txt = ctypes.cast(txt_ptr, ctypes.c_char_p).value.decode('utf-8')
-            print('py: txt', '{:x}'.format(txt_ptr), type(txt_ptr))
+            # print('py: txt', '{:x}'.format(txt_ptr), type(txt_ptr))
             lib.free_char_p(txt_ptr)
             txt_ptr = None
             # try:
@@ -188,10 +188,10 @@ def native_rust(width, height, limit, wait, debug=False):
     # ffi = FFI()
     # lib = ffi.dlopen("target/debug/liblife.so")
 
-    # ffi.cdef('void *init_state_random_2(int, int);')
+    # ffi.cdef('void *init_state_random(int, int, int);')
     # ffi.cdef('void next_state(void *state_ptr);')
 
-    # state = lib.init_state_random_2(10, 5)
+    # state = lib.init_state_random(10, 5, 2)
     # # print('py:', '{:x}'.format(state), type(state))
     # for i in range(10):
     #     print('py:', lib.next_state(state))
@@ -205,7 +205,7 @@ if __name__ == '__main__':
     # life(100_000, wait=0.6)
 
     native_rust(
-        width=80, height=30,
+        width=80, height=38,
         limit=10_000,
         wait=0.120,
         debug=True)

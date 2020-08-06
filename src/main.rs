@@ -1,32 +1,22 @@
-mod lib;
+mod life;
 
 
 fn main() {
-    lib::life(
+    life::start_life(
         // width, height
-        // 80, 38,
+        80, 38,
         // 5, 10,
-        2_000, 2_000,
+        // 2_000, 2_000,
+        // init shape
+        // life::Shape::Empty,
+        life::Shape::Random,
+        // life::Shape::Glider,
+        // Worker threads
+        4,
         // max iter
-        10,
+        10_100,
         // sleep ms
         60,
         // debug, show time per tick insted of board
-        true);
-
-    // let s = lib::init_state_random_2(10, 5);
-
-    // println!("main ptr {:?}", s);
-
-    // let txt = lib::next_state(s);
-
-    // println!("{}", txt);
-    // println!("");
-    // println!("{}", lib::next_state(s));
-    // println!("");
-    // println!("{}", lib::next_state(s));
-    // println!("");
-    // println!("{}", lib::next_state(s));
-    // println!("");
-    // println!("{}", lib::next_state(s));
+        false);
 }
