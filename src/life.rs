@@ -90,48 +90,42 @@ impl BoardState {
 pub struct Life {
     pub state: Arc<BoardState>,
     pool: ThreadPool,
+    chunk_intervals: Vec<(usize, usize)>,
 }
 
 impl Life {
     pub fn new(width: i32, height: i32, init: Shape, n_workers: usize) -> Life {
         let state = Arc::new(BoardState::new(width, height, init));
         let pool = ThreadPool::new(n_workers);
-        return Life {state, pool};
+        let mut chunk_intervals = Vec::new();
+
+        //
+        // Pre-calculate chunk sizes for each thread.
+        //
+        let len = (width*height) as usize;
+        let chunk_len = len/n_workers;
+
+        for n in 0..n_workers {
+            chunk_intervals.push((n*chunk_len, n*chunk_len + chunk_len));
+        }
+
+        chunk_intervals[n_workers-1].1 += len%n_workers;
+
+        return Life {state, pool, chunk_intervals};
     }
 
     pub fn tick(&mut self) {
-        // let mut next_state = self.cells.clone();
         let next_cells = vec![DEAD; (self.state.width*self.state.height) as usize];
-        // let next_state = BoardState::new(self.state.width, self.state.height);
-        // let mut neighbors: u8;
-        // let mut x;
-        // let mut y;
-
-        // let mut workers = Vec::new();
-
-        // let state = Arc::clone(&self.state);
         let c_lock = Arc::new(Mutex::new(next_cells));
 
-        // let width = self.state.width;
-        // let height = self.state.height;
-
-        // let state_arc = Arc::new(Mutex::new(&self));
-        let cpus: usize = self.pool.max_count();
-        // let chunk_size = (self.state.width*self.state.height) as usize/cpus;
-        let slice_size = ((self.state.width*self.state.height) as usize)/cpus;
-        // let slices = next_cells.slice_at(slice_size);
-
-        for n in 0..cpus {
+        for interval in &self.chunk_intervals {
             let state = Arc::clone(&self.state);
             let c_lock2 = c_lock.clone();
 
-            // TODO: fix
-            let from = (slice_size*n) as i32;
-            let to = (slice_size*n+slice_size) as i32;
+            let from = interval.0 as i32;
+            let to = interval.1 as i32;
 
             self.pool.execute(move || {
-                // println!("{:?}", (width, height));
-                // println!("{:?}", state);
                 for i in from..to {
 
                     let x = i % state.width;
@@ -155,14 +149,10 @@ impl Life {
                         }
                     }
                 }
-
-                // println!("DONE worker{:?}", n);
             });
         }
 
         self.pool.join();
-// println!("B{:?}", next_cells);
-// thread::sleep(time::Duration::from_millis(1000));
 
         let cells = c_lock.lock().unwrap();
         let width = self.state.width;
@@ -209,10 +199,20 @@ pub fn start_life(
     let mut now;
     let mut game;
 
+
+    println!("\n\nConway's Game of Life\n");
+    println!("Board:    {}x{}", width, height);
+    println!("Cells:    {}", width*height);
+    println!("Workers:  {}", n_workers);
+    println!("Max iter: {}", limit);
+    println!("Wait:     {}ms", wait);
+
+    println!("\nStarting ...\n");
+
     if debug {
         now = time::SystemTime::now();
         game = Life::new(width, height, init, n_workers);
-        println!("Tick 1 ! {:?}", now.elapsed());
+        println!("Generating Game ! {:?}\n", now.elapsed());
     } else {
         game = Life::new(width, height, init, n_workers);
         draw(&game.state);
