@@ -1,6 +1,7 @@
 *.pyc
 __pycache__
 *.sublime-workspace
+.vscode
 /.env
 /.venv*
 node_modules
