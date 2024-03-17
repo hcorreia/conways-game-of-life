@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use rand::random;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -189,6 +191,46 @@ impl Life {
             width,
             height,
             cells: cells.to_vec(),
+        };
+
+        self.state = Arc::new(next_state);
+    }
+
+    pub fn tickle(&mut self) {
+        let mut next_cells = vec![DEAD; (self.state.width * self.state.height) as usize];
+        let state = Arc::clone(&self.state);
+
+        for i in 0..next_cells.len() {
+            let i = i as i32;
+
+            let x = i % state.width;
+            let y = i / state.width;
+
+            let neighbors = state.get_neighbors(x, y);
+
+            if state.cells[i as usize] == LIVE {
+                if neighbors <= 1 {
+                    // next_cells[i as usize] = DEAD;
+                } else if neighbors >= 4 {
+                    // next_cells[i as usize] = DEAD;
+                } else {
+                    next_cells[i as usize] = LIVE;
+                }
+            } else {
+                if neighbors == 3 {
+                    next_cells[i as usize] = LIVE;
+                } else {
+                    // next_cells[i as usize] = DEAD;
+                }
+            }
+        }
+
+        let width = self.state.width;
+        let height = self.state.height;
+        let next_state = BoardState {
+            width,
+            height,
+            cells: next_cells,
         };
 
         self.state = Arc::new(next_state);

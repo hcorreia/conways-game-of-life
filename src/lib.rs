@@ -1,10 +1,9 @@
 mod life;
 
-use life::{Life, Shape, LIVE, LIVE_CHAR, DEAD_CHAR};
 use libc;
+use life::{Life, Shape, DEAD_CHAR, LIVE, LIVE_CHAR};
 use std::ffi::CString;
 // use std::ffi::c_void;
-
 
 #[no_mangle] // *mut libc::c_void
 pub extern "C" fn init_state_empty(width: i32, height: i32, n_workers: i32) -> *mut Life {
@@ -25,7 +24,6 @@ pub extern "C" fn init_state_empty(width: i32, height: i32, n_workers: i32) -> *
     // return Box::into_raw(Box::new(game)) as *mut libc::c_void;
 }
 
-
 #[no_mangle] // *mut libc::c_void
 pub extern "C" fn init_state_random(width: i32, height: i32, n_workers: i32) -> *mut Life {
     assert!(width > 0);
@@ -44,7 +42,6 @@ pub extern "C" fn init_state_random(width: i32, height: i32, n_workers: i32) -> 
     return raw;
     // return Box::into_raw(Box::new(game)) as *mut libc::c_void;
 }
-
 
 #[no_mangle] // *mut libc::c_void
 pub extern "C" fn init_state_glider(width: i32, height: i32, n_workers: i32) -> *mut Life {
@@ -65,7 +62,6 @@ pub extern "C" fn init_state_glider(width: i32, height: i32, n_workers: i32) -> 
     // return Box::into_raw(Box::new(game)) as *mut libc::c_void;
 }
 
-
 #[no_mangle]
 pub extern "C" fn next_state(game_ptr: *mut libc::c_void) -> *mut libc::c_char {
     println!("next_state ptr {:?}", game_ptr);
@@ -78,14 +74,13 @@ pub extern "C" fn next_state(game_ptr: *mut libc::c_void) -> *mut libc::c_char {
     game.tick();
 
     for (i, cell) in game.state.cells.iter().enumerate() {
-
         if *cell == LIVE {
             buff.push_str(LIVE_CHAR);
         } else {
             buff.push_str(DEAD_CHAR);
         }
 
-        if  (i as i32  + 1) % game.state.width == 0 {
+        if (i as i32 + 1) % game.state.width == 0 {
             buff.push_str("\n");
         }
     }
@@ -97,10 +92,9 @@ pub extern "C" fn next_state(game_ptr: *mut libc::c_void) -> *mut libc::c_char {
     return c_str_song.into_raw();
 }
 
-
 #[no_mangle]
 pub extern "C" fn free_char_p(s: *mut libc::c_char) {
-    unsafe {
+    _ = unsafe {
         if s.is_null() {
             return;
         }
@@ -108,11 +102,10 @@ pub extern "C" fn free_char_p(s: *mut libc::c_char) {
     };
 }
 
-
 #[no_mangle]
 pub extern "C" fn free_void_p(ptr: *mut libc::c_void) {
     println!("free ptr {:?}", ptr);
-    unsafe {
+    _ = unsafe {
         if ptr.is_null() {
             return;
         }

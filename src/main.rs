@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
+
 mod life;
 mod life_image;
 
@@ -90,7 +93,7 @@ async fn main() {
     //     }
     // });
 
-    let mut tx_chan = state.tx.clone();
+    let tx_chan = state.tx.clone();
 
     // Life.
     tokio::spawn(async move {
@@ -133,7 +136,7 @@ async fn main() {
             if debug {
                 now = time::SystemTime::now();
 
-                game.tick();
+                game.tickle();
 
                 println!("Tick ! {:?}", now.elapsed());
 
@@ -152,7 +155,7 @@ async fn main() {
 
                 // println!("IMG {:?}", b);
             } else {
-                game.tick();
+                game.tickle();
                 let b = draw_image_data_url(&game.state);
                 let _ = tx_chan.send(b);
             }
@@ -204,4 +207,77 @@ async fn websocket_handler(socket: WebSocket, state: Arc<AppState>) {
     }
 
     let _ = state.tx.send("LEFT: todo".into());
+}
+
+#[test]
+fn benchmark_new_life_random() {
+    let mut now;
+    let n_workers = 4;
+
+    for width in vec![1, 10, 100, 1_000, 1_440, 10_000] {
+        now = time::SystemTime::now();
+
+        for _ in 0..10 {
+            Life::new(width, width, life::Shape::Random, n_workers);
+        }
+
+        let elapsed = now.elapsed().unwrap();
+
+        println!(
+            "new_life_random-board-{width} | Total {:?} | Avg. {:?}",
+            elapsed,
+            elapsed / 10
+        );
+    }
+}
+
+#[test]
+fn benchmark_draw_image_data_url() {
+    let mut now;
+    let mut game;
+    let n_workers = 4;
+
+    for width in vec![1, 10, 100, 1_000, 1_440, 10_000] {
+        game = Life::new(width, width, life::Shape::Random, n_workers);
+
+        now = time::SystemTime::now();
+
+        for _ in 0..10 {
+            draw_image_data_url(&game.state);
+        }
+
+        let elapsed = now.elapsed().unwrap();
+
+        println!(
+            "draw_image_data_url-board-{width} | Total {:?} | Avg. {:?}",
+            elapsed,
+            elapsed / 10
+        );
+    }
+}
+
+#[test]
+fn benchmark_life() {
+    let mut now;
+    let mut game;
+    let n_workers = 4;
+
+    for width in vec![1, 10, 100, 1_000, 1_440, 10_000] {
+        game = Life::new(width, width, life::Shape::Random, n_workers);
+
+        now = time::SystemTime::now();
+
+        for _ in 0..10 {
+            // game.tick();
+            game.tickle();
+        }
+
+        let elapsed = now.elapsed().unwrap();
+
+        println!(
+            "life-board-{width} | Total {:?} | Avg. {:?}",
+            elapsed,
+            elapsed / 10
+        );
+    }
 }
