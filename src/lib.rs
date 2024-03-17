@@ -1,7 +1,9 @@
 mod life;
+mod life_image;
 
 use libc;
 use life::{Life, Shape, DEAD_CHAR, LIVE, LIVE_CHAR};
+use life_image::draw_image_data_url;
 use std::ffi::CString;
 // use std::ffi::c_void;
 
@@ -11,15 +13,15 @@ pub extern "C" fn init_state_empty(width: i32, height: i32, n_workers: i32) -> *
     assert!(height > 0);
     assert!(n_workers > 0);
 
-    println!("{:?}, {:?}", width, height);
+    // println!("{:?}, {:?}", width, height);
     let game = Life::new(width, height, Shape::Empty, n_workers as usize);
-    println!("{:?}, {:?}", game.state.width, game.state.height);
+    // println!("{:?}, {:?}", game.state.width, game.state.height);
     // for i in 0..(game.height*game.width) {
     //     game.cells[i as usize] = random::<bool>() as u8;
     // }
 
     let raw = Box::into_raw(Box::new(game));
-    println!("return ptr {:?}", raw);
+    // println!("return ptr {:?}", raw);
     return raw;
     // return Box::into_raw(Box::new(game)) as *mut libc::c_void;
 }
@@ -30,15 +32,15 @@ pub extern "C" fn init_state_random(width: i32, height: i32, n_workers: i32) -> 
     assert!(height > 0);
     assert!(n_workers > 0);
 
-    println!("{:?}, {:?}", width, height);
+    // println!("{:?}, {:?}", width, height);
     let game = Life::new(width, height, Shape::Random, n_workers as usize);
-    println!("{:?}, {:?}", game.state.width, game.state.height);
+    // println!("{:?}, {:?}", game.state.width, game.state.height);
     // for i in 0..(game.height*game.width) {
     //     game.cells[i as usize] = random::<bool>() as u8;
     // }
 
     let raw = Box::into_raw(Box::new(game));
-    println!("return ptr {:?}", raw);
+    // println!("return ptr {:?}", raw);
     return raw;
     // return Box::into_raw(Box::new(game)) as *mut libc::c_void;
 }
@@ -49,29 +51,30 @@ pub extern "C" fn init_state_glider(width: i32, height: i32, n_workers: i32) -> 
     assert!(height > 0);
     assert!(n_workers > 0);
 
-    println!("{:?}, {:?}", width, height);
+    // println!("{:?}, {:?}", width, height);
     let game = Life::new(width, height, Shape::Glider, n_workers as usize);
-    println!("{:?}, {:?}", game.state.width, game.state.height);
+    // println!("{:?}, {:?}", game.state.width, game.state.height);
     // for i in 0..(game.height*game.width) {
     //     game.cells[i as usize] = random::<bool>() as u8;
     // }
 
     let raw = Box::into_raw(Box::new(game));
-    println!("return ptr {:?}", raw);
+    // println!("return ptr {:?}", raw);
     return raw;
     // return Box::into_raw(Box::new(game)) as *mut libc::c_void;
 }
 
 #[no_mangle]
 pub extern "C" fn next_state(game_ptr: *mut libc::c_void) -> *mut libc::c_char {
-    println!("next_state ptr {:?}", game_ptr);
+    // println!("next_state ptr {:?}", game_ptr);
     // let game: &mut Life = unsafe { &mut *(game_ptr as *mut Life) };
     // let mut game = unsafe { Box::from_raw(game_ptr as *mut Life) };
     let mut game = unsafe { Box::from_raw(game_ptr as *mut Life) };
 
     let mut buff = String::from("");
-    println!("{:?}", (game.state.width, game.state.height));
+    // println!("{:?}", (game.state.width, game.state.height));
     game.tick();
+    // game.tickle();
 
     for (i, cell) in game.state.cells.iter().enumerate() {
         if *cell == LIVE {
@@ -85,10 +88,29 @@ pub extern "C" fn next_state(game_ptr: *mut libc::c_void) -> *mut libc::c_char {
         }
     }
 
-    let raw = Box::into_raw(Box::new(game));
-    println!("return ptr {:?}", raw);
+    let _raw = Box::into_raw(Box::new(game));
+    // println!("return ptr {:?}", raw);
 
     let c_str_song = CString::new(buff).unwrap();
+    return c_str_song.into_raw();
+}
+
+#[no_mangle]
+pub extern "C" fn next_state_img(game_ptr: *mut libc::c_void) -> *mut libc::c_char {
+    // println!("next_state ptr {:?}", game_ptr);
+    // let game: &mut Life = unsafe { &mut *(game_ptr as *mut Life) };
+    // let mut game = unsafe { Box::from_raw(game_ptr as *mut Life) };
+    let mut game = unsafe { Box::from_raw(game_ptr as *mut Life) };
+
+    // println!("{:?}", (game.state.width, game.state.height));
+    game.tickle();
+
+    let data = draw_image_data_url(&game.state);
+
+    let _raw = Box::into_raw(Box::new(game));
+    // println!("return ptr {:?}", raw);
+
+    let c_str_song = CString::new(data).unwrap();
     return c_str_song.into_raw();
 }
 
@@ -104,7 +126,7 @@ pub extern "C" fn free_char_p(s: *mut libc::c_char) {
 
 #[no_mangle]
 pub extern "C" fn free_void_p(ptr: *mut libc::c_void) {
-    println!("free ptr {:?}", ptr);
+    // println!("free ptr {:?}", ptr);
     _ = unsafe {
         if ptr.is_null() {
             return;
